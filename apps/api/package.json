@@ -1,0 +1,38 @@
+{
+  "name": "@fee-recovery/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/app.js",
+  "scripts": {
+    "dev": "tsx watch src/app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@fee-recovery/db": "*",
+    "@fee-recovery/shared": "*",
+    "@fee-recovery/providers": "*",
+    "@fee-recovery/nlp": "*",
+    "fastify": "^4.27.0",
+    "@fastify/jwt": "^8.0.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/rate-limit": "^9.1.0",
+    "@fastify/multipart": "^8.3.0",
+    "inngest": "^3.22.0",
+    "@upstash/redis": "^1.31.0",
+    "zod": "^3.23.0",
+    "csv-stringify": "^6.5.0",
+    "exceljs": "^4.4.0",
+    "pino": "^9.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.15.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "vitest": "^1.6.0"
+  }
+}

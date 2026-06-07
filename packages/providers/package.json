@@ -1,0 +1,21 @@
+{
+  "name": "@fee-recovery/providers",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fee-recovery/shared": "*",
+    "@fee-recovery/db": "*",
+    "@upstash/redis": "^1.31.0",
+    "twilio": "^5.2.0",
+    "plivo": "^4.55.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  }
+}
