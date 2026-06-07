@@ -29,7 +29,7 @@ export async function buildApp() {
   const app = Fastify({ logger: true });
 
   await app.register(cors, { origin: true });
-  await app.register(rateLimit, { max: 100, timeWindow: '1 minute', redis });
+  await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
 
   app.setErrorHandler(errorHandler);
