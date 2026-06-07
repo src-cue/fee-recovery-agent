@@ -24,7 +24,7 @@ function validateRow(row: ParsedRow, mapping: Partial<Record<FieldName, string>>
   const errors: string[] = [];
   const phone = row[mapping.parent_phone ?? ''];
   if (!phone) errors.push('Missing parent phone');
-  else if (!/^+?[0-9]{10,13}$/.test(phone.replace(/s/g, ''))) errors.push('Invalid phone format');
+  else if (!/^\+?[0-9]{10,13}$/.test(phone.replace(/\s/g, ''))) errors.push('Invalid phone format');
   const amount = row[mapping.fee_amount ?? ''];
   if (!amount || isNaN(Number(amount))) errors.push('Invalid fee amount');
   if (!row[mapping.due_date ?? '']) errors.push('Missing due date');

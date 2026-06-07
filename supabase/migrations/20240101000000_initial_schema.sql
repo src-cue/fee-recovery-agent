@@ -1,5 +1,7 @@
+-- Idempotent migration — safe to re-run on an existing schema
+
 -- Tenants (one per school)
-CREATE TABLE tenants (
+CREATE TABLE IF NOT EXISTS tenants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   school_name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
@@ -18,7 +20,7 @@ CREATE TABLE tenants (
 );
 
 -- Cases (one per overdue student fee)
-CREATE TABLE cases (
+CREATE TABLE IF NOT EXISTS cases (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   case_id TEXT NOT NULL,
@@ -42,11 +44,11 @@ CREATE TABLE cases (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(tenant_id, case_id)
 );
-CREATE INDEX cases_tenant_status ON cases(tenant_id, status);
-CREATE INDEX cases_tenant_created ON cases(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS cases_tenant_status ON cases(tenant_id, status);
+CREATE INDEX IF NOT EXISTS cases_tenant_created ON cases(tenant_id, created_at DESC);
 
 -- Timeline events
-CREATE TABLE timeline_events (
+CREATE TABLE IF NOT EXISTS timeline_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   case_id UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -61,11 +63,11 @@ CREATE TABLE timeline_events (
   metadata JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX timeline_case_id ON timeline_events(case_id, created_at DESC);
-CREATE UNIQUE INDEX timeline_dedup ON timeline_events(message_id) WHERE message_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS timeline_case_id ON timeline_events(case_id, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS timeline_dedup ON timeline_events(message_id) WHERE message_id IS NOT NULL;
 
 -- Templates
-CREATE TABLE templates (
+CREATE TABLE IF NOT EXISTS templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -80,7 +82,7 @@ CREATE TABLE templates (
 );
 
 -- Provider health tracking
-CREATE TABLE provider_health (
+CREATE TABLE IF NOT EXISTS provider_health (
   provider TEXT PRIMARY KEY,
   is_healthy BOOLEAN NOT NULL DEFAULT true,
   error_rate NUMERIC(5,4) NOT NULL DEFAULT 0,
@@ -89,7 +91,7 @@ CREATE TABLE provider_health (
 );
 
 -- Billing / token usage log
-CREATE TABLE token_usage (
+CREATE TABLE IF NOT EXISTS token_usage (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   case_id UUID REFERENCES cases(id),
@@ -97,7 +99,7 @@ CREATE TABLE token_usage (
   tokens INTEGER NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX token_usage_tenant ON token_usage(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS token_usage_tenant ON token_usage(tenant_id, created_at DESC);
 
 -- Row Level Security
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
@@ -107,11 +109,23 @@ ALTER TABLE templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE token_usage ENABLE ROW LEVEL SECURITY;
 
 -- Service role bypasses RLS (used by backend)
-CREATE POLICY "service_all" ON tenants TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "service_all" ON cases TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "service_all" ON timeline_events TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "service_all" ON templates TO service_role USING (true) WITH CHECK (true);
-CREATE POLICY "service_all" ON token_usage TO service_role USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tenants' AND policyname='service_all') THEN
+    CREATE POLICY "service_all" ON tenants TO service_role USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='cases' AND policyname='service_all') THEN
+    CREATE POLICY "service_all" ON cases TO service_role USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='timeline_events' AND policyname='service_all') THEN
+    CREATE POLICY "service_all" ON timeline_events TO service_role USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='templates' AND policyname='service_all') THEN
+    CREATE POLICY "service_all" ON templates TO service_role USING (true) WITH CHECK (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='token_usage' AND policyname='service_all') THEN
+    CREATE POLICY "service_all" ON token_usage TO service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Updated_at trigger
 CREATE OR REPLACE FUNCTION update_updated_at()
@@ -119,6 +133,9 @@ RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS tenants_updated_at ON tenants;
+DROP TRIGGER IF EXISTS cases_updated_at ON cases;
+DROP TRIGGER IF EXISTS templates_updated_at ON templates;
 CREATE TRIGGER tenants_updated_at BEFORE UPDATE ON tenants FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER cases_updated_at BEFORE UPDATE ON cases FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 CREATE TRIGGER templates_updated_at BEFORE UPDATE ON templates FOR EACH ROW EXECUTE FUNCTION update_updated_at();
