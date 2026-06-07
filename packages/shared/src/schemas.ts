@@ -25,6 +25,7 @@ export const TenantCreateSchema = z.object({
   school_name: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(8),
+  phone: z.string().optional(),
   timezone: z.string().default('Asia/Kolkata'),
   currency: z.string().default('INR'),
   default_language: z.enum(['en', 'hi', 'ta', 'te', 'mr', 'kn', 'bn']).default('en'),

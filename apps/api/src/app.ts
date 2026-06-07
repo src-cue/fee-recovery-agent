@@ -18,6 +18,8 @@ import { templateRoutes } from './routes/templates.js';
 import { dashboardRoutes } from './routes/dashboard.js';
 import { billingRoutes } from './routes/billing.js';
 import { webhookRoutes } from './routes/webhooks.js';
+import { callTwimlRoutes } from './routes/call-twiml.js';
+import { callQueueRoutes } from './routes/call-queue.js';
 import { inngestRoutes } from './routes/inngest.js';
 
 export const redis = new Redis({
@@ -46,6 +48,8 @@ export async function buildApp() {
   await app.register(dashboardRoutes, { prefix: '/v1/dashboard' });
   await app.register(billingRoutes, { prefix: '/v1/billing' });
   await app.register(webhookRoutes, { prefix: '/v1/webhooks' });
+  await app.register(callTwimlRoutes, { prefix: '/v1/webhooks' });
+  await app.register(callQueueRoutes, { prefix: '/v1/call-queue' });
   await app.register(inngestRoutes, { prefix: '/api' });
 
   return app;

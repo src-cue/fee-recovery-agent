@@ -3,8 +3,20 @@ import { supabase } from '@fee-recovery/db';
 import { providerRouter } from '@fee-recovery/providers';
 import { interpolateTemplate } from '@fee-recovery/shared';
 
+// Terminal statuses — once reached, no more reminders should fire
+const TERMINAL_STATUSES = ['RESOLVED', 'ON_HOLD', 'ESCALATED', 'PROMISE_TO_PAY'];
+
 export const caseCreatedFn = inngest.createFunction(
-  { id: 'case-created', retries: 3 },
+  {
+    id: 'case-created',
+    retries: 3,
+    cancelOn: [
+      {
+        event: 'case/cancelled',
+        match: 'data.case_id',
+      },
+    ],
+  },
   { event: 'case/created' },
   async ({ event, step }) => {
     const { case_id, tenant_id } = event.data as { case_id: string; tenant_id: string };

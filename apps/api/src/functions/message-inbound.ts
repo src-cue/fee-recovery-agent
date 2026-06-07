@@ -2,6 +2,10 @@ import { inngest } from '../lib/inngest.js';
 import { supabase } from '@fee-recovery/db';
 import { classifyIntent } from '@fee-recovery/nlp';
 
+async function cancelWorkflow(case_id: string, tenant_id: string, reason: string) {
+  await inngest.send({ name: 'case/cancelled', data: { case_id, tenant_id, reason } });
+}
+
 export const messageInboundFn = inngest.createFunction(
   { id: 'message-inbound', retries: 2 },
   { event: 'message/inbound' },
@@ -36,6 +40,7 @@ export const messageInboundFn = inngest.createFunction(
           type: 'status_change',
           content: 'Auto-resolved: parent confirmed payment',
         });
+        await cancelWorkflow(case_id, tenant_id, 'RESOLVED');
       } else if (result.intent === 'promise' && result.promise_date) {
         await supabase.from('timeline_events').insert({
           case_id,
@@ -55,6 +60,7 @@ export const messageInboundFn = inngest.createFunction(
           type: 'status_change',
           content: 'Escalated: parent expressed distress',
         });
+        await cancelWorkflow(case_id, tenant_id, 'ESCALATED');
       }
 
       // Fire ERP callback if tenant has one

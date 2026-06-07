@@ -255,6 +255,8 @@ export async function caseRoutes(app: FastifyInstance) {
   });
 }
 
+const TERMINAL_STATUSES = ['RESOLVED', 'ON_HOLD', 'ESCALATED', 'PROMISE_TO_PAY'];
+
 async function updateCaseStatus(req: FastifyRequest, reply: FastifyReply, status: string) {
   const { id } = req.params as { id: string };
   const { error } = await supabase
@@ -270,6 +272,14 @@ async function updateCaseStatus(req: FastifyRequest, reply: FastifyReply, status
     type: 'status_change',
     content: `Status changed to ${status}`,
   });
+
+  // Cancel the running reminder workflow so no more messages fire
+  if (TERMINAL_STATUSES.includes(status)) {
+    await inngest.send({
+      name: 'case/cancelled',
+      data: { case_id: id, tenant_id: req.tenant.id, reason: status },
+    });
+  }
 
   return reply.send({ ok: true });
 }
