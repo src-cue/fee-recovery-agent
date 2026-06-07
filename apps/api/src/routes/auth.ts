@@ -1,11 +1,19 @@
 import type { FastifyInstance } from 'fastify';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@fee-recovery/db';
 import { requireAuth } from '../plugins/auth.js';
+
+// Anon client for user-facing auth (signInWithPassword requires anon key, not service role)
+const anonClient = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_ANON_KEY!,
+  { auth: { persistSession: false } }
+);
 
 export async function authRoutes(app: FastifyInstance) {
   app.post('/login', async (req, reply) => {
     const { email, password } = req.body as { email: string; password: string };
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await anonClient.auth.signInWithPassword({ email, password });
     if (error || !data.user) return reply.code(401).send({ error: 'Invalid credentials' });
 
     const { data: tenant } = await supabase
